@@ -1,3 +1,26 @@
+/*
+Package sadv provides a saslauthd client for authenticating a user via
+password. In most cases the path, service, realm, and clientAddr args to
+SASLauthdVerifyPassword can be empty string and the retval can be ignored.
+For Example:
+
+	import (
+		"log"
+
+		"github.com/jrwren/sadv"
+	)
+	func main() {
+		retval, err := sadv.SASLauthdVerifyPassword("", user, password, "", "", "")
+		if err != nil {
+			log.Println("auth failed")
+
+		}
+		log.Println("auth succeeded")
+	}
+
+The entire package is in a single file and ~ 120lines. Feel free to copy and
+paste the impl into your code rather than importing with go get.
+*/
 package sadv
 
 import (
@@ -9,9 +32,13 @@ import (
 )
 
 // SASLauthdVerifyPassword connects to saslauthd socket at path and
-// autneticates. If the return value is not an error, then authentication
+// authenticates. If the return value is not an error, then authentication
 // was successful. The string response is the response from saslauthd. It is
 // usually not needed but can be useful for debugging purposes.
+// If the path is empty and environment variable PATH_SASLAUTHD_RUNDIR is set
+// then the mux socket file in that directory is used. Otherwise a default of
+// "/var/run/saslauthd/mux" is used.
+// If the service is empty then a default of imap is used.
 func SASLauthdVerifyPassword(path, user, password, service, realm,
 	clientAddr string) (string, error) {
 	if service == "" {
@@ -57,6 +84,9 @@ func SASLauthdVerifyPassword(path, user, password, service, realm,
 	}
 	defer c.Close()
 	n, err := c.Write(query.Bytes())
+	if err != nil {
+		return "", err
+	}
 	if n != query.Len() {
 		return "", io.ErrShortWrite
 	}
